@@ -39,11 +39,11 @@ describe("thomo-tps speed calculation", () => {
 
 		assert.equal(speed?.tokensPerSecond, 50);
 		assert.equal(speed?.inProgress, true);
-		assert.equal(formatSpeedLabel(speed), "obs 50.0t/s");
+		assert.equal(formatSpeedLabel(speed), "50.0t/s");
 	});
 
 	it("formats high speeds without unnecessary decimals", () => {
-		assert.equal(formatSpeedLabel({ tokensPerSecond: 125, outputTokens: 1, durationMs: 1, responseCount: 1, inProgress: false }), "obs 125t/s");
+		assert.equal(formatSpeedLabel({ tokensPerSecond: 125, outputTokens: 1, durationMs: 1, responseCount: 1, inProgress: false }), "125t/s");
 	});
 
 	it("shows server and observed speeds when native metrics are available", () => {
@@ -52,9 +52,9 @@ describe("thomo-tps speed calculation", () => {
 				{ tokensPerSecond: 40, outputTokens: 400, durationMs: 10_000, responseCount: 2, inProgress: false },
 				{ source: "ollama", outputTokens: 50, decodeDurationMs: 1_000 },
 			),
-			"srv 50.0t/s obs 40.0t/s",
+			"srv 50.0t/s 40.0t/s",
 		);
-		assert.equal(formatSpeedLabel(undefined, { source: "ollama", outputTokens: 50, decodeDurationMs: 1_000 }), "srv 50.0t/s obs --");
-		assert.equal(formatSpeedLabel({ tokensPerSecond: 40, outputTokens: 1, durationMs: 1, responseCount: 1, inProgress: false }, { source: "ollama", outputTokens: 1, decodeDurationMs: 0 }), "obs 40.0t/s");
+		assert.equal(formatSpeedLabel(undefined, { source: "ollama", outputTokens: 50, decodeDurationMs: 1_000 }), "srv 50.0t/s --");
+		assert.equal(formatSpeedLabel({ tokensPerSecond: 40, outputTokens: 1, durationMs: 1, responseCount: 1, inProgress: false }, { source: "ollama", outputTokens: 1, decodeDurationMs: 0 }), "40.0t/s");
 	});
 });
