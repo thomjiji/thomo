@@ -13,7 +13,7 @@
 | [`thomo-block-style`](packages/thomo-block-style/) | 为语义背景块增加可切换的样式 |
 | [`thomo-export-md`](packages/thomo-export-md/) | 通过 `/export-md` 导出对话 Markdown |
 | [`thomo-no-italic`](packages/thomo-no-italic/) | 禁用 TUI 的 italic 样式 |
-| [`thomo-ollama-native`](packages/thomo-ollama-native/) | Ollama 原生 `/api/chat` provider |
+| [`thomo-ollama-native`](packages/thomo-ollama-native/) | 可选的 Ollama 原生 `/api/chat` provider；默认不随 umbrella package 加载 |
 | [`thomo-reply-anchor`](packages/thomo-reply-anchor/) | 在 agent 回复开头添加可搜索的 `§` 锚点 |
 | [`thomo-tps`](packages/thomo-tps/) | 在默认 status bar 的统计信息区域显示模型输出速度（TPS） |
 
@@ -32,7 +32,7 @@ pi list
 pi install -l git:github.com/thomjiji/thomo
 ```
 
-Git source 会安装整个仓库，包括 Ollama native provider。只想临时试用时，可以使用 `pi -e`，退出 Pi 后自动 unplug：
+Git source 会安装整个仓库。Ollama native provider 默认不随 umbrella package 加载；试用时使用 `pi -e`，退出 Pi 后自动 unplug：
 
 ```bash
 pi -e /path/to/thomo/packages/thomo-ollama-native
@@ -59,10 +59,10 @@ pi remove git:github.com/thomjiji/thomo
 pi install git:github.com/thomjiji/thomo@<commit>
 ```
 
-Ollama native provider 也可以独立安装；如果不需要它，可用 `THOMO_OLLAMA_NATIVE=0` 禁用而不影响现有 `/v1` provider：
+Ollama native provider 建议独立安装；效果不满意时只需移除它，不会影响现有 `/v1` provider：
 
 ```bash
-THOMO_OLLAMA_NATIVE=0 pi
+pi remove /path/to/thomo/packages/thomo-ollama-native
 ```
 
 ## 开发

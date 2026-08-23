@@ -19,7 +19,8 @@
   "pi": {
     "extensions": [
       "./packages/*/index.ts",
-      "!packages/thomo-delegate/index.ts"
+      "!packages/thomo-delegate/index.ts",
+      "!packages/thomo-ollama-native/index.ts"
     ]
   },
   "scripts": {

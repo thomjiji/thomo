@@ -13,7 +13,11 @@ test("declares the umbrella workspace and standalone package boundaries", () => 
 	assert.ok(manifest.keywords.includes("pi-package"));
 	assert.ok(manifest.files.includes("LICENSE"));
 	assert.deepEqual(manifest.workspaces, ["packages/*"]);
-	assert.deepEqual(manifest.pi.extensions, ["./packages/*/index.ts", "!packages/thomo-delegate/index.ts"]);
+	assert.deepEqual(manifest.pi.extensions, [
+		"./packages/*/index.ts",
+		"!packages/thomo-delegate/index.ts",
+		"!packages/thomo-ollama-native/index.ts",
+	]);
 	assert.equal(manifest.dependencies, undefined);
 	assert.equal(manifest.devDependencies, undefined);
 
