@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { createAssistantMessageEventStream, type Api, type Context, type Model, type SimpleStreamOptions } from "@earendil-works/pi-ai";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import {
@@ -23,24 +26,29 @@ export default function ollamaNativeExtension(pi: ExtensionAPI): void {
 	const hasExplicitModels = modelNames.length > 0;
 	const baseUrl = normalizeBaseUrl(configuredEndpoint ?? DEFAULT_OLLAMA_BASE_URL);
 	let registered = false;
+	let registeredProviderIds: string[] = [];
 
 	const register = () => {
 		if (registered) return;
-		const providerConfig = {
-			name: PROVIDER_NAME,
-			api: "ollama-native" as const,
-			apiKey: "ollama",
-			...(hasExplicitEndpoint || hasExplicitModels ? { baseUrl } : {}),
-			...(hasExplicitModels ? { models: modelNames.map(ollamaModelConfig) } : {}),
-			// Leave this callback absent when models.json is supplying a static
-			// provider. That keeps /model from probing the default localhost.
-			...(hasExplicitEndpoint || hasExplicitModels
-				? { refreshModels: async ({ signal }: { signal: AbortSignal }) => discoverOllamaModels(baseUrl, signal) }
-				: {}),
-			streamSimple: (model: Model<Api>, context: Context, options?: SimpleStreamOptions) =>
-				streamOllama(model, context, options, () => createAssistantMessageEventStream()),
-		};
-		pi.registerProvider(OLLAMA_PROVIDER_ID, providerConfig);
+		registeredProviderIds = nativeProviderIdsFromModelsJson();
+		for (const providerId of registeredProviderIds) {
+			const isPrimaryProvider = providerId === OLLAMA_PROVIDER_ID;
+			const providerConfig = {
+				name: isPrimaryProvider ? PROVIDER_NAME : `${PROVIDER_NAME} (${providerId})`,
+				api: "ollama-native" as const,
+				apiKey: "ollama",
+				...(isPrimaryProvider && (hasExplicitEndpoint || hasExplicitModels) ? { baseUrl } : {}),
+				...(isPrimaryProvider && hasExplicitModels ? { models: modelNames.map(ollamaModelConfig) } : {}),
+				// Leave this callback absent when models.json is supplying a static
+				// provider. That keeps /model from probing the default localhost.
+				...(isPrimaryProvider && (hasExplicitEndpoint || hasExplicitModels)
+					? { refreshModels: async ({ signal }: { signal: AbortSignal }) => discoverOllamaModels(baseUrl, signal) }
+					: {}),
+				streamSimple: (model: Model<Api>, context: Context, options?: SimpleStreamOptions) =>
+					streamOllama(model, context, options, () => createAssistantMessageEventStream()),
+			};
+			pi.registerProvider(providerId, providerConfig);
+		}
 		registered = true;
 	};
 
@@ -50,7 +58,8 @@ export default function ollamaNativeExtension(pi: ExtensionAPI): void {
 		handler: async (args, ctx) => {
 			const action = args.trim().toLowerCase();
 			if (action === "off") {
-				if (registered) pi.unregisterProvider(OLLAMA_PROVIDER_ID);
+				for (const providerId of registeredProviderIds) pi.unregisterProvider(providerId);
+				registeredProviderIds = [];
 				registered = false;
 				ctx.ui.notify("Ollama native provider disabled; restart or /reload to restore it", "info");
 				return;
@@ -75,6 +84,24 @@ function normalizeBaseUrl(value: string): string {
 	const trimmed = value.trim().replace(/\/+$/, "");
 	if (!trimmed) return DEFAULT_OLLAMA_BASE_URL;
 	return /^[a-z][a-z\d+.-]*:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`;
+}
+
+function nativeProviderIdsFromModelsJson(): string[] {
+	const providerIds = new Set([OLLAMA_PROVIDER_ID]);
+	const agentDir = process.env.PI_CODING_AGENT_DIR ?? join(homedir(), ".pi", "agent");
+	try {
+		const config = JSON.parse(readFileSync(join(agentDir, "models.json"), "utf8")) as {
+			providers?: Record<string, { api?: string; models?: Array<{ api?: string }> }>;
+		};
+		for (const [providerId, provider] of Object.entries(config.providers ?? {})) {
+			if (provider.api === "ollama-native" || provider.models?.some((model) => model.api === "ollama-native")) {
+				providerIds.add(providerId);
+			}
+		}
+	} catch {
+		// models.json is optional; the primary provider still works with env config.
+	}
+	return [...providerIds];
 }
 
 export { buildOllamaRequest, normalizeBaseUrl };

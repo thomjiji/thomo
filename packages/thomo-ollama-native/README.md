@@ -69,7 +69,7 @@ pi
 
 使用 models.json 静态模型时，provider 不会探测默认的 localhost；需要动态从 `/api/tags` 发现模型时，再使用上面的环境变量配置 endpoint。
 
-模型名称会显示为 `模型名 (Ollama native)`，provider id 是 `ollama-native`。普通文本、thinking、工具调用、图片输入和 Ollama 完成指标均通过原生协议处理。
+如果要配置多个 Ollama 地址，可以使用不同的 provider id，只要 provider 或模型的 `api` 写成 `ollama-native`，扩展就会为该 provider 注册原生处理器。例如 `gsj-5-ollama-native` 和 `gsj-9-ollama-native`。模型名称会显示为 `模型名 (Ollama native)`，provider id 是 `ollama-native` 或配置中的别名。普通文本、thinking、工具调用、图片输入和 Ollama 完成指标均通过原生协议处理。
 
 ## 回滚
 

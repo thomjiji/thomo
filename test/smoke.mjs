@@ -590,32 +590,31 @@ async function assertOllamaModelsJsonConfig(tempRoot) {
 	try {
 		await mkdir(agentDir, { recursive: true });
 		await writeFile(join(agentDir, "models.json"), JSON.stringify({
-			providers: {
-				"ollama-native": {
-					baseUrl: `http://127.0.0.1:${address.port}`,
-					api: "ollama-native",
-					apiKey: "ollama",
-					models: [{
-						id: "qwen3:8b",
-						name: "qwen3:8b (Ollama native)",
-						reasoning: true,
-						input: ["text", "image"],
-						contextWindow: 128000,
-						maxTokens: 32768,
-					}],
-				},
-			},
-		}, null, 2));
+			providers: Object.fromEntries(["ollama-native", "gsj-5-ollama-native", "gsj-9-ollama-native"].map((providerId) => [providerId, {
+				baseUrl: `http://127.0.0.1:${address.port}`,
+				api: "ollama-native",
+				apiKey: "ollama",
+				models: [{
+					id: "qwen3:8b",
+					name: `qwen3:8b (${providerId})`,
+					reasoning: true,
+					input: ["text", "image"],
+					contextWindow: 128000,
+					maxTokens: 32768,
+				}],
+			}])),		}, null, 2));
 		const providerEnv = { ...piEnv, PI_CODING_AGENT_DIR: agentDir, PI_OFFLINE: "1", PI_AUTOTITLE: "0" };
 		providerEnv.THOMO_OLLAMA_BASE_URL = "";
 		providerEnv.THOMO_OLLAMA_MODELS = "";
 		providerEnv.OLLAMA_HOST = "";
 		await run(PI_BIN, ["install", extensionDir], { cwd: projectDir, env: providerEnv });
-		const rpc = await runRpcUntilAgentEnd(agentDir, projectDir, "ollama-native/qwen3:8b", "Say hello", [], providerEnv);
-		assert.ok(rpc.code === 0 || rpc.code === 143, `models.json provider failed: ${rpc.stderr}\\n${JSON.stringify(rpc.lines)}`);
-		assert.equal(rpc.lines.some((line) => line.type === "extension_error"), false, `models.json extension error: ${JSON.stringify(rpc.lines)}`);
-		assert.equal(fixture.requests.length, 1, `models.json should avoid catalog refresh: requests=${JSON.stringify(fixture.requests)} lines=${JSON.stringify(rpc.lines)}`);
-		assert.equal(fixture.requests[0].model, "qwen3:8b");
+		for (const providerId of ["ollama-native", "gsj-5-ollama-native", "gsj-9-ollama-native"]) {
+			const rpc = await runRpcUntilAgentEnd(agentDir, projectDir, `${providerId}/qwen3:8b`, "Say hello", [], providerEnv);
+			assert.ok(rpc.code === 0 || rpc.code === 143, `models.json provider failed: ${rpc.stderr}\\n${JSON.stringify(rpc.lines)}`);
+			assert.equal(rpc.lines.some((line) => line.type === "extension_error"), false, `models.json extension error: ${JSON.stringify(rpc.lines)}`);
+			assert.equal(fixture.requests.length, providerId === "ollama-native" ? 1 : providerId === "gsj-5-ollama-native" ? 2 : 3, `models.json should avoid catalog refresh: requests=${JSON.stringify(fixture.requests)} lines=${JSON.stringify(rpc.lines)}`);
+			assert.equal(fixture.requests.at(-1)?.model, "qwen3:8b");
+		}
 	} finally {
 		await new Promise((resolvePromise) => fixture.server.close(resolvePromise));
 	}
