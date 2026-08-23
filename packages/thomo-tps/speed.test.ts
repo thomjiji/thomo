@@ -39,7 +39,7 @@ describe("thomo-tps speed calculation", () => {
 
 		assert.equal(speed?.tokensPerSecond, 50);
 		assert.equal(speed?.inProgress, true);
-		assert.equal(formatSpeedLabel(speed), "50.0 tps...");
+		assert.equal(formatSpeedLabel(speed), "50.0 tps");
 	});
 
 	it("formats high speeds without unnecessary decimals", () => {

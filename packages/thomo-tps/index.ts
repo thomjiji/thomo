@@ -9,7 +9,6 @@ import {
 	estimateTokens,
 	formatSpeedLabel,
 	getAverageResponseSpeed,
-	speedColor,
 	type ResponseSpeedAggregate,
 	type ResponseSpeedInfo,
 } from "./speed.ts";
@@ -232,7 +231,7 @@ function renderFooter(
 	const rightWidth = visibleWidth(rightPlain);
 	const padding = Math.max(0, safeWidth - statsLeftWidth - rightWidth);
 	const dimStatsLeft = theme.fg("dim", statsLeft);
-	const speedText = visibleSpeed ? theme.fg(speedColor(responseSpeed), visibleSpeed) : "";
+	const speedText = visibleSpeed ? theme.fg("dim", visibleSpeed) : "";
 	const modelText = visibleModel ? `${" ".repeat(gap)}${theme.fg("dim", visibleModel)}` : "";
 	const statsLine = `${dimStatsLeft}${" ".repeat(padding)}${speedText}${modelText}`;
 
@@ -326,7 +325,6 @@ export {
 	estimateTokens,
 	formatSpeedLabel,
 	getAverageResponseSpeed,
-	speedColor,
 };
 
 export type { ResponseSpeedAggregate, ResponseSpeedInfo };

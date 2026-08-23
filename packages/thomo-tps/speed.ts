@@ -75,7 +75,7 @@ export function formatTokensPerSecond(tokensPerSecond: number): string {
 export function formatSpeedLabel(speed: ResponseSpeedInfo | undefined): string {
 	if (!speed) return "-- tps";
 	const value = speed.tokensPerSecond === undefined ? "--" : formatTokensPerSecond(speed.tokensPerSecond);
-	return `${value} tps${speed.inProgress ? "..." : ""}`;
+	return `${value} tps`;
 }
 
 export function estimateTokens(text: string): number {
@@ -92,12 +92,4 @@ export function estimateAssistantOutputTokens(
 		else if (block.type === "toolCall") characters += JSON.stringify(block.arguments ?? {}).length;
 	}
 	return Math.ceil(characters / 4);
-}
-
-export function speedColor(speed: ResponseSpeedInfo | undefined): "success" | "warning" | "error" | "dim" {
-	const tokensPerSecond = speed?.tokensPerSecond;
-	if (tokensPerSecond === undefined || tokensPerSecond <= 0) return "dim";
-	if (tokensPerSecond >= 20) return "success";
-	if (tokensPerSecond >= 5) return "warning";
-	return "error";
 }
