@@ -187,6 +187,7 @@ function renderFooter(
 	if ((totals.cacheRead > 0 || totals.cacheWrite > 0) && totals.latestCacheHitRate !== undefined) {
 		statsParts.push(`CH${totals.latestCacheHitRate.toFixed(1)}%`);
 	}
+	statsParts.push(formatSpeedLabel(responseSpeed));
 
 	const usingSubscription = isSubscriptionProvider(ctx);
 	if (totals.cost || usingSubscription) {
@@ -220,20 +221,14 @@ function renderFooter(
 		modelSide = `(${ctx.model.provider}) ${rightSideWithoutProvider}`;
 	}
 
-	const speedLabel = formatSpeedLabel(responseSpeed);
-	const speedWidth = visibleWidth(speedLabel);
 	const gap = 2;
 	const availableRight = Math.max(0, safeWidth - statsLeftWidth - gap);
-	const modelBudget = Math.max(0, availableRight - speedWidth - gap);
-	const visibleModel = modelBudget > 0 ? truncateToWidth(modelSide, modelBudget, "") : "";
-	const visibleSpeed = truncateToWidth(speedLabel, availableRight, "");
-	const rightPlain = visibleModel ? `${visibleSpeed}${" ".repeat(gap)}${visibleModel}` : visibleSpeed;
-	const rightWidth = visibleWidth(rightPlain);
+	const visibleModel = availableRight > 0 ? truncateToWidth(modelSide, availableRight, "") : "";
+	const rightWidth = visibleModel ? gap + visibleWidth(visibleModel) : 0;
 	const padding = Math.max(0, safeWidth - statsLeftWidth - rightWidth);
 	const dimStatsLeft = theme.fg("dim", statsLeft);
-	const speedText = visibleSpeed ? theme.fg("dim", visibleSpeed) : "";
 	const modelText = visibleModel ? `${" ".repeat(gap)}${theme.fg("dim", visibleModel)}` : "";
-	const statsLine = `${dimStatsLeft}${" ".repeat(padding)}${speedText}${modelText}`;
+	const statsLine = `${dimStatsLeft}${" ".repeat(padding)}${modelText}`;
 
 	const pwdLine = truncateToWidth(theme.fg("dim", pwd), safeWidth, theme.fg("dim", "..."));
 	const lines = [pwdLine, statsLine];

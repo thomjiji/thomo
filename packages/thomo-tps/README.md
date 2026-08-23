@@ -1,6 +1,6 @@
 # thomo-tps
 
-在 Pi 默认 status bar 的右侧显示模型输出速度（TPS，tokens per second）。插件只增加 TPS，不替换默认 footer 的其他信息，也不注册命令。
+在 Pi 默认 status bar 的统计信息区域显示模型输出速度（TPS，tokens per second）。插件只增加 TPS，不替换默认 footer 的其他信息，也不注册命令。
 
 速度按当前 session 已完成回复的总输出 token 数和总耗时计算；模型回复流式输出时会实时显示估算值。
 
