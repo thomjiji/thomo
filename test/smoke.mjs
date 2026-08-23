@@ -274,7 +274,9 @@ export default function (pi: ExtensionAPI) {
 	}
 	assert.equal(commands.filter((command) => command.name === "autotitle").length, 1);
 	assert.equal(commands.filter((command) => command.name === "export-md").length, 1);
-	assert.equal(commands.some((command) => command.name === "ollama-native"), false, "native provider must remain opt-in");
+	const nativeCommands = commands.filter((command) => command.name === "ollama-native");
+	assert.equal(nativeCommands.length, 1, "native provider must register once in the umbrella package");
+	assert.equal(nativeCommands[0].sourceInfo.origin, "package");
 	assert.equal(commands.some((command) => command.sourceInfo?.path?.endsWith("format.ts")), false);
 	assert.equal(response(rpc.lines, "autotitle")?.success, true);
 	assert.equal(response(rpc.lines, "export")?.success, true);
@@ -531,7 +533,6 @@ function runRpcUntilAgentEnd(agentDir, projectDir, model, prompt, extraArgs = []
 async function assertStandaloneOllamaNativeLoads(tempRoot) {
 	const agentDir = join(tempRoot, "agent-ollama-native");
 	const projectDir = join(tempRoot, "project-ollama-native");
-	const extensionDir = join(root, "packages", "thomo-ollama-native");
 	await mkdir(projectDir, { recursive: true });
 	const fixture = startOllamaFixtureServer();
 	await new Promise((resolvePromise, reject) => {
@@ -550,7 +551,6 @@ async function assertStandaloneOllamaNativeLoads(tempRoot) {
 			THOMO_OLLAMA_MODELS: "qwen3:8b",
 		};
 		await run(PI_BIN, ["install", root], { cwd: projectDir, env: providerEnv });
-		await run(PI_BIN, ["install", extensionDir], { cwd: projectDir, env: providerEnv });
 		const rpc = await runRpcUntilAgentEnd(
 			agentDir,
 			projectDir,
@@ -578,7 +578,6 @@ async function assertStandaloneOllamaNativeLoads(tempRoot) {
 async function assertOllamaModelsJsonConfig(tempRoot) {
 	const agentDir = join(tempRoot, "agent-ollama-models-json");
 	const projectDir = join(tempRoot, "project-ollama-models-json");
-	const extensionDir = join(root, "packages", "thomo-ollama-native");
 	await mkdir(projectDir, { recursive: true });
 	const fixture = startOllamaFixtureServer();
 	await new Promise((resolvePromise, reject) => {
@@ -602,12 +601,13 @@ async function assertOllamaModelsJsonConfig(tempRoot) {
 					contextWindow: 128000,
 					maxTokens: 32768,
 				}],
-			}])),		}, null, 2));
+			}]))
+		}, null, 2));
 		const providerEnv = { ...piEnv, PI_CODING_AGENT_DIR: agentDir, PI_OFFLINE: "1", PI_AUTOTITLE: "0" };
 		providerEnv.THOMO_OLLAMA_BASE_URL = "";
 		providerEnv.THOMO_OLLAMA_MODELS = "";
 		providerEnv.OLLAMA_HOST = "";
-		await run(PI_BIN, ["install", extensionDir], { cwd: projectDir, env: providerEnv });
+		await run(PI_BIN, ["install", root], { cwd: projectDir, env: providerEnv });
 		for (const providerId of ["ollama-native", "gsj-5-ollama-native", "gsj-9-ollama-native"]) {
 			const rpc = await runRpcUntilAgentEnd(agentDir, projectDir, `${providerId}/qwen3:8b`, "Say hello", [], providerEnv);
 			assert.ok(rpc.code === 0 || rpc.code === 143, `models.json provider failed: ${rpc.stderr}\\n${JSON.stringify(rpc.lines)}`);
