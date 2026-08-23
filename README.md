@@ -13,6 +13,7 @@
 | [`thomo-block-style`](packages/thomo-block-style/) | 为语义背景块增加可切换的样式 |
 | [`thomo-export-md`](packages/thomo-export-md/) | 通过 `/export-md` 导出对话 Markdown |
 | [`thomo-no-italic`](packages/thomo-no-italic/) | 禁用 TUI 的 italic 样式 |
+| [`thomo-ollama-native`](packages/thomo-ollama-native/) | 可选的 Ollama 原生 `/api/chat` provider；默认不随 umbrella package 加载 |
 | [`thomo-reply-anchor`](packages/thomo-reply-anchor/) | 在 agent 回复开头添加可搜索的 `§` 锚点 |
 | [`thomo-tps`](packages/thomo-tps/) | 在默认 status bar 的统计信息区域显示模型输出速度（TPS） |
 
@@ -31,7 +32,13 @@ pi list
 pi install -l git:github.com/thomjiji/thomo
 ```
 
-Git source 会安装整个仓库。只加载一个插件时，使用本地 checkout：
+Git source 会安装整个仓库。Ollama native provider 是 opt-in，不会随 umbrella package 自动加载；试用时使用 `pi -e`，退出 Pi 后自动 unplug：
+
+```bash
+pi -e /path/to/thomo/packages/thomo-ollama-native
+```
+
+只加载一个持久插件时，使用本地 checkout：
 
 ```bash
 pi install /path/to/thomo/packages/thomo-auto-title
@@ -45,10 +52,17 @@ Pi 插件拥有 Pi 进程的系统权限，安装前请审查源码。
 pi update --extensions
 ```
 
-需要临时固定版本时，安装指定 commit：
+需要临时固定版本时，安装指定 commit。若 settings 中已有同一 source，先 remove 再 install，避免同时加载两个副本：
 
 ```bash
+pi remove git:github.com/thomjiji/thomo
 pi install git:github.com/thomjiji/thomo@<commit>
+```
+
+Ollama native provider 建议独立安装；效果不满意时只需移除它，不会影响现有 `/v1` provider：
+
+```bash
+pi remove /path/to/thomo/packages/thomo-ollama-native
 ```
 
 ## 开发

@@ -45,4 +45,16 @@ describe("thomo-tps speed calculation", () => {
 	it("formats high speeds without unnecessary decimals", () => {
 		assert.equal(formatSpeedLabel({ tokensPerSecond: 125, outputTokens: 1, durationMs: 1, responseCount: 1, inProgress: false }), "125t/s");
 	});
+
+	it("shows server and observed speeds when native metrics are available", () => {
+		assert.equal(
+			formatSpeedLabel(
+				{ tokensPerSecond: 40, outputTokens: 400, durationMs: 10_000, responseCount: 2, inProgress: false },
+				{ source: "ollama", outputTokens: 50, decodeDurationMs: 1_000 },
+			),
+			"server 50.0t/s observed 40.0t/s",
+		);
+		assert.equal(formatSpeedLabel(undefined, { source: "ollama", outputTokens: 50, decodeDurationMs: 1_000 }), "server 50.0t/s observed --");
+		assert.equal(formatSpeedLabel({ tokensPerSecond: 40, outputTokens: 1, durationMs: 1, responseCount: 1, inProgress: false }, { source: "ollama", outputTokens: 1, decodeDurationMs: 0 }), "40.0t/s");
+	});
 });

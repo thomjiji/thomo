@@ -12,6 +12,10 @@ import {
 	type ResponseSpeedAggregate,
 	type ResponseSpeedInfo,
 } from "./speed.ts";
+import {
+	readGenerationMetrics,
+	type GenerationMetrics,
+} from "./generation-metrics.ts";
 
 const SPEED_RENDER_THROTTLE_MS = 250;
 
@@ -33,6 +37,7 @@ interface UsageTotals {
 
 export default function tpsExtension(pi: ExtensionAPI) {
 	let responseSpeed: ResponseSpeedInfo | undefined;
+	let generationMetrics: GenerationMetrics | undefined;
 	let completedResponseSpeed = createEmptyResponseSpeedAggregate();
 	let responseStartMs: number | undefined;
 	let liveOutputTokenEstimate = 0;
@@ -68,6 +73,7 @@ export default function tpsExtension(pi: ExtensionAPI) {
 
 		responseStartMs = Date.now();
 		liveOutputTokenEstimate = 0;
+		generationMetrics = undefined;
 		responseSpeed = getAverageResponseSpeed(completedResponseSpeed, {
 			outputTokens: 0,
 			durationMs: 0,
@@ -79,6 +85,7 @@ export default function tpsExtension(pi: ExtensionAPI) {
 	pi.on("message_update", async (event) => {
 		if (event.message.role !== "assistant" || responseStartMs === undefined) return;
 
+		generationMetrics = readGenerationMetrics(event.message) ?? generationMetrics;
 		const streamEvent = event.assistantMessageEvent;
 		if (
 			streamEvent.type === "text_delta" ||
@@ -103,6 +110,7 @@ export default function tpsExtension(pi: ExtensionAPI) {
 			return;
 		}
 
+		generationMetrics = readGenerationMetrics(event.message) ?? generationMetrics;
 		const durationMs = responseStartMs === undefined ? 0 : Date.now() - responseStartMs;
 		const outputTokens =
 			event.message.usage?.output ||
@@ -132,7 +140,7 @@ export default function tpsExtension(pi: ExtensionAPI) {
 					tui.requestRender();
 				},
 				render(width: number): string[] {
-					return renderFooter(ctx, pi, theme, footerData, width, responseSpeed);
+					return renderFooter(ctx, pi, theme, footerData, width, responseSpeed, generationMetrics);
 				},
 			};
 		});
@@ -151,6 +159,7 @@ export default function tpsExtension(pi: ExtensionAPI) {
 
 	function resetResponseSpeed(): void {
 		responseSpeed = undefined;
+		generationMetrics = undefined;
 		completedResponseSpeed = createEmptyResponseSpeedAggregate();
 		responseStartMs = undefined;
 		liveOutputTokenEstimate = 0;
@@ -165,6 +174,7 @@ function renderFooter(
 	footerData: ReadonlyFooterDataProvider,
 	width: number,
 	responseSpeed: ResponseSpeedInfo | undefined,
+	generationMetrics: GenerationMetrics | undefined,
 ): string[] {
 	const safeWidth = Math.max(1, width);
 	const totals = collectUsageTotals(ctx);
@@ -187,7 +197,7 @@ function renderFooter(
 	if ((totals.cacheRead > 0 || totals.cacheWrite > 0) && totals.latestCacheHitRate !== undefined) {
 		statsParts.push(`CH${totals.latestCacheHitRate.toFixed(1)}%`);
 	}
-	statsParts.push(formatSpeedLabel(responseSpeed));
+	statsParts.push(formatSpeedLabel(responseSpeed, generationMetrics));
 
 	const usingSubscription = isSubscriptionProvider(ctx);
 	if (totals.cost || usingSubscription) {

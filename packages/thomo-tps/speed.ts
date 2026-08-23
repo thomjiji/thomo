@@ -1,3 +1,5 @@
+import { calculateGenerationTokensPerSecond, type GenerationMetrics } from "./generation-metrics.ts";
+
 export interface ResponseSpeedInfo {
 	tokensPerSecond?: number;
 	outputTokens: number;
@@ -72,10 +74,25 @@ export function formatTokensPerSecond(tokensPerSecond: number): string {
 	return Math.round(tokensPerSecond).toString();
 }
 
-export function formatSpeedLabel(speed: ResponseSpeedInfo | undefined): string {
-	if (!speed) return "--t/s";
-	const value = speed.tokensPerSecond === undefined ? "--" : formatTokensPerSecond(speed.tokensPerSecond);
-	return `${value}t/s`;
+export function formatSpeedLabel(
+	speed: ResponseSpeedInfo | undefined,
+	generationMetrics?: GenerationMetrics,
+): string {
+	if (!generationMetrics) {
+		if (!speed) return "--t/s";
+		const value = speed.tokensPerSecond === undefined ? "--" : formatTokensPerSecond(speed.tokensPerSecond);
+		return `${value}t/s`;
+	}
+
+	const serverTokensPerSecond = calculateGenerationTokensPerSecond(generationMetrics);
+	if (serverTokensPerSecond === undefined) {
+		if (!speed) return "--t/s";
+		const observedOnly = speed.tokensPerSecond === undefined ? "--" : formatTokensPerSecond(speed.tokensPerSecond);
+		return `${observedOnly}t/s`;
+	}
+	const server = `${formatTokensPerSecond(serverTokensPerSecond)}t/s`;
+	const observed = speed?.tokensPerSecond === undefined ? "--" : `${formatTokensPerSecond(speed.tokensPerSecond)}t/s`;
+	return `server ${server} observed ${observed}`;
 }
 
 export function estimateTokens(text: string): number {

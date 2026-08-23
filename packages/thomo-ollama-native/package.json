@@ -1,14 +1,13 @@
 {
-  "name": "thomo-tps",
+  "name": "thomo-ollama-native",
   "version": "0.1.0",
   "private": true,
-  "description": "Show average model output speed in Pi's status bar statistics",
+  "description": "Optional Ollama native /api/chat provider for Pi",
   "type": "module",
   "main": "./index.ts",
   "files": [
     "index.ts",
-    "speed.ts",
-    "generation-metrics.ts",
+    "ollama.ts",
     "README.md"
   ],
   "pi": {
@@ -19,13 +18,12 @@
   "keywords": [
     "pi-package",
     "pi",
-    "tps",
-    "tokens-per-second",
-    "status-bar"
+    "ollama",
+    "provider"
   ],
   "license": "MIT",
   "peerDependencies": {
-    "@earendil-works/pi-coding-agent": ">=0.84.2",
-    "@earendil-works/pi-tui": ">=0.84.2"
+    "@earendil-works/pi-ai": ">=0.84.2",
+    "@earendil-works/pi-coding-agent": ">=0.84.2"
   }
 }

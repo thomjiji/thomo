@@ -274,6 +274,7 @@ export default function (pi: ExtensionAPI) {
 	}
 	assert.equal(commands.filter((command) => command.name === "autotitle").length, 1);
 	assert.equal(commands.filter((command) => command.name === "export-md").length, 1);
+	assert.equal(commands.some((command) => command.name === "ollama-native"), false, "native provider must remain opt-in");
 	assert.equal(commands.some((command) => command.sourceInfo?.path?.endsWith("format.ts")), false);
 	assert.equal(response(rpc.lines, "autotitle")?.success, true);
 	assert.equal(response(rpc.lines, "export")?.success, true);
@@ -371,7 +372,7 @@ export default function (pi: ExtensionAPI) {
 		const sessionHeader = JSON.parse((await readFile(state.data.sessionFile, "utf8")).split("\n", 1)[0]);
 		const sessionDate = new Date(sessionHeader.timestamp);
 		const pad = (value) => String(value).padStart(2, "0");
-		const sessionTimestamp = `${String(sessionDate.getFullYear()).slice(-2)}${pad(sessionDate.getMonth() + 1)}${pad(sessionDate.getDate())}${pad(sessionDate.getHours())}${pad(sessionDate.getMinutes())}`;
+		const sessionTimestamp = `${sessionDate.getFullYear()}-${pad(sessionDate.getMonth() + 1)}-${pad(sessionDate.getDate())} ${pad(sessionDate.getHours())}:${pad(sessionDate.getMinutes())}`;
 		assert.equal(state.data.sessionName, `Fixture title (${sessionTimestamp})`);
 		assert.deepEqual(fixture.requests.map((request) => request.model), ["title", "deepseek-v4-flash", "title"]);
 		assert.equal(JSON.stringify(fixture.requests[1].messages).includes("<conversation>"), true);
@@ -438,6 +439,140 @@ async function assertStandaloneBlockStyleLoads(tempRoot) {
 	const blockStyle = commands.find((command) => command.name === "block-style");
 	assert.equal(blockStyle?.sourceInfo.origin, "package");
 	assert.match(blockStyle?.sourceInfo.path.replaceAll("\\", "/"), /packages\/thomo-block-style\/index\.ts$/);
+}
+
+function startOllamaFixtureServer() {
+	const requests = [];
+	const server = http.createServer((request, response) => {
+		let body = "";
+		request.on("data", (chunk) => { body += chunk; });
+		request.on("end", () => {
+			if (request.url === "/api/tags") {
+				response.writeHead(200, { "content-type": "application/json" });
+				response.end(JSON.stringify({ models: [{ name: "qwen3:8b" }] }));
+				return;
+			}
+			if (request.url !== "/api/chat") {
+				response.writeHead(404);
+				response.end();
+				return;
+			}
+			const payload = JSON.parse(body);
+			requests.push(payload);
+			response.writeHead(200, { "content-type": "application/x-ndjson" });
+			response.write(JSON.stringify({ model: payload.model, message: { thinking: "fixture plan" }, done: false }) + "\n");
+			response.write(JSON.stringify({ model: payload.model, message: { content: "fixture native response" }, done: false }) + "\n");
+			response.end(JSON.stringify({
+				model: payload.model,
+				done: true,
+				done_reason: "stop",
+				prompt_eval_count: 4,
+				prompt_eval_duration: 2_000_000,
+				eval_count: 8,
+				eval_duration: 200_000_000,
+				load_duration: 10_000_000,
+				total_duration: 250_000_000,
+			}) + "\n");
+		});
+	});
+	return { server, requests };
+}
+
+function runRpcUntilAgentEnd(agentDir, projectDir, model, prompt, extraArgs = [], extraEnv = {}) {
+	return new Promise((resolvePromise, reject) => {
+		const child = spawn(PI_BIN, ["--mode", "rpc", "--model", model, "--thinking", "off", "--no-approve", ...extraArgs], {
+			cwd: projectDir,
+			env: { ...piEnv, PI_OFFLINE: "1", PI_CODING_AGENT_DIR: agentDir, ...extraEnv },
+			stdio: ["pipe", "pipe", "pipe"],
+		});
+		const lines = [];
+		let pending = "";
+		let stderr = "";
+		let stateRequested = false;
+		const timer = setTimeout(() => {
+			child.kill("SIGTERM");
+			reject(new Error(`native provider RPC smoke test timed out. stderr:\n${stderr}\nlines=${JSON.stringify(lines)}`));
+		}, 20_000);
+		child.stdout.on("data", (chunk) => {
+			pending += chunk;
+			for (;;) {
+				const newline = pending.indexOf("\n");
+				if (newline < 0) break;
+				const text = pending.slice(0, newline).trim();
+				pending = pending.slice(newline + 1);
+				if (!text) continue;
+				try {
+					const line = JSON.parse(text);
+					lines.push(line);
+					if (line.type === "agent_end" && !stateRequested) {
+						stateRequested = true;
+						child.stdin.write(JSON.stringify({ id: "state", type: "get_state" }) + "\n");
+					}
+					if (line.type === "response" && line.id === "state") {
+						clearTimeout(timer);
+						setTimeout(() => child.kill("SIGTERM"), 100);
+					}
+				} catch {
+					lines.push({ type: "unparsed", text });
+				}
+			}
+		});
+		child.stderr.on("data", (chunk) => { stderr += chunk; });
+		child.on("error", reject);
+		child.on("close", (code, signal) => {
+			clearTimeout(timer);
+			resolvePromise({ code: code ?? 1, signal, lines, stderr });
+		});
+		child.stdin.write(JSON.stringify({ id: "commands", type: "get_commands" }) + "\n");
+		child.stdin.write(JSON.stringify({ id: "prompt", type: "prompt", message: prompt }) + "\n");
+	});
+}
+
+async function assertStandaloneOllamaNativeLoads(tempRoot) {
+	const agentDir = join(tempRoot, "agent-ollama-native");
+	const projectDir = join(tempRoot, "project-ollama-native");
+	const extensionDir = join(root, "packages", "thomo-ollama-native");
+	await mkdir(projectDir, { recursive: true });
+	const fixture = startOllamaFixtureServer();
+	await new Promise((resolvePromise, reject) => {
+		fixture.server.once("error", reject);
+		fixture.server.listen(0, "127.0.0.1", resolvePromise);
+	});
+	const address = fixture.server.address();
+	assert.equal(typeof address, "object");
+	try {
+		const providerEnv = {
+			...piEnv,
+			PI_CODING_AGENT_DIR: agentDir,
+			PI_OFFLINE: "1",
+			PI_AUTOTITLE: "0",
+			THOMO_OLLAMA_BASE_URL: `http://127.0.0.1:${address.port}`,
+			THOMO_OLLAMA_MODELS: "qwen3:8b",
+		};
+		await run(PI_BIN, ["install", root], { cwd: projectDir, env: providerEnv });
+		await run(PI_BIN, ["install", extensionDir], { cwd: projectDir, env: providerEnv });
+		const rpc = await runRpcUntilAgentEnd(
+			agentDir,
+			projectDir,
+			"ollama-native/qwen3:8b",
+			"Say hello",
+			[],
+			providerEnv,
+		);
+		assert.ok(rpc.code === 0 || rpc.code === 143, `native provider RPC failed: ${rpc.stderr}\n${JSON.stringify(rpc.lines)}`);
+		assert.equal(rpc.lines.some((line) => line.type === "extension_error"), false, `Native provider extension error: ${JSON.stringify(rpc.lines)}`);
+		const commands = commandList(rpc);
+		assert.equal(commands.filter((command) => command.name === "ollama-native").length, 1, `native provider must register once: ${JSON.stringify(commands.filter((command) => command.name === "ollama-native"))}`);
+		assert.equal(fixture.requests.length, 1, `expected one native request: ${JSON.stringify(fixture.requests)}`);
+		assert.equal(fixture.requests[0].think, false, "thinking off must be sent explicitly");
+		assert.equal(fixture.requests[0].model, "qwen3:8b");
+		const assistantEnd = rpc.lines.find((line) => line.type === "message_end" && line.message?.role === "assistant");
+		assert.equal(assistantEnd?.message?.usage?.output, 8);
+		assert.equal(assistantEnd?.message?.generationMetrics?.source, "ollama");
+		assert.equal(assistantEnd?.message?.generationMetrics?.decodeDurationMs, 200);
+	} finally {
+		await new Promise((resolvePromise) => fixture.server.close(resolvePromise));
+	}
 }
 
 async function assertLegacyCopiesAreRejected(tempRoot) {
@@ -539,6 +674,7 @@ try {
 	await assertCleanPackageLoads(tempRoot);
 	await assertStandaloneExtensionLoads(tempRoot);
 	await assertStandaloneBlockStyleLoads(tempRoot);
+	await assertStandaloneOllamaNativeLoads(tempRoot);
 	await assertStandaloneDelegateIsDisabled(tempRoot);
 	await assertLegacyCopiesAreRejected(tempRoot);
 	await assertLegacyCleanupScript(tempRoot);
