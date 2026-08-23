@@ -81,18 +81,18 @@ export function formatSpeedLabel(
 	if (!generationMetrics) {
 		if (!speed) return "--t/s";
 		const value = speed.tokensPerSecond === undefined ? "--" : formatTokensPerSecond(speed.tokensPerSecond);
-		return `${value}t/s`;
+		return `obs ${value}t/s`;
 	}
 
 	const serverTokensPerSecond = calculateGenerationTokensPerSecond(generationMetrics);
 	if (serverTokensPerSecond === undefined) {
 		if (!speed) return "--t/s";
 		const observedOnly = speed.tokensPerSecond === undefined ? "--" : formatTokensPerSecond(speed.tokensPerSecond);
-		return `${observedOnly}t/s`;
+		return `obs ${observedOnly}t/s`;
 	}
 	const server = `${formatTokensPerSecond(serverTokensPerSecond)}t/s`;
 	const observed = speed?.tokensPerSecond === undefined ? "--" : `${formatTokensPerSecond(speed.tokensPerSecond)}t/s`;
-	return `server ${server} observed ${observed}`;
+	return `srv ${server} obs ${observed}`;
 }
 
 export function estimateTokens(text: string): number {
