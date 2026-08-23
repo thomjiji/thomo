@@ -73,9 +73,9 @@ export function formatTokensPerSecond(tokensPerSecond: number): string {
 }
 
 export function formatSpeedLabel(speed: ResponseSpeedInfo | undefined): string {
-	if (!speed) return "--tps";
+	if (!speed) return "--t/s";
 	const value = speed.tokensPerSecond === undefined ? "--" : formatTokensPerSecond(speed.tokensPerSecond);
-	return `${value}tps`;
+	return `${value}t/s`;
 }
 
 export function estimateTokens(text: string): number {
