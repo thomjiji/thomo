@@ -25,6 +25,7 @@ test("declares the umbrella workspace and standalone package boundaries", () => 
 		"thomo-export-md/index.ts",
 		"thomo-no-italic/index.ts",
 		"thomo-reply-anchor/index.ts",
+		"thomo-tps/index.ts",
 	];
 	const discoveredEntrypoints: string[] = [];
 	for (const packageName of readdirSync(join(root, "packages"))) {

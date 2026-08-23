@@ -1,0 +1,30 @@
+{
+  "name": "thomo-tps",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Show average model output speed in Pi's right-aligned status bar",
+  "type": "module",
+  "main": "./index.ts",
+  "files": [
+    "index.ts",
+    "speed.ts",
+    "README.md"
+  ],
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  },
+  "keywords": [
+    "pi-package",
+    "pi",
+    "tps",
+    "tokens-per-second",
+    "status-bar"
+  ],
+  "license": "MIT",
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": ">=0.84.2",
+    "@earendil-works/pi-tui": ">=0.84.2"
+  }
+}

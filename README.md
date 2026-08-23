@@ -14,6 +14,7 @@
 | [`thomo-export-md`](packages/thomo-export-md/) | 通过 `/export-md` 导出对话 Markdown |
 | [`thomo-no-italic`](packages/thomo-no-italic/) | 禁用 TUI 的 italic 样式 |
 | [`thomo-reply-anchor`](packages/thomo-reply-anchor/) | 在 agent 回复开头添加可搜索的 `§` 锚点 |
+| [`thomo-tps`](packages/thomo-tps/) | 在默认 status bar 右侧显示模型输出速度（TPS） |
 
 `thomo-delegate` 已停用，不会随 umbrella package 或独立 package 加载；相关源码和文档仅保留作历史参考。
 
