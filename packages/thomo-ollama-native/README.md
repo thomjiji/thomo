@@ -30,10 +30,44 @@ pi remove /path/to/thomo/packages/thomo-ollama-native
 
 ## 配置
 
+可以用环境变量临时配置：
+
+```bash
+THOMO_OLLAMA_BASE_URL=http://127.0.0.1:11434 \
+THOMO_OLLAMA_MODELS=qwen3:8b \
+pi
+```
+
 - `THOMO_OLLAMA_BASE_URL` 覆盖服务地址，默认 `http://127.0.0.1:11434`。
 - `OLLAMA_HOST` 是没有设置上述变量时的备用地址。
 - `THOMO_OLLAMA_MODELS` 使用逗号分隔的模型名，作为无需网络发现的初始模型列表。
 - `THOMO_OLLAMA_NATIVE=0` 禁用扩展而不卸载 package。
+
+也可以把固定 provider 配置写入 `~/.pi/agent/models.json`，这样不需要把地址写进 thomo：
+
+```json
+{
+  "providers": {
+    "ollama-native": {
+      "baseUrl": "http://127.0.0.1:11434",
+      "api": "ollama-native",
+      "apiKey": "ollama",
+      "models": [
+        {
+          "id": "qwen3:8b",
+          "name": "qwen3:8b (Ollama native)",
+          "reasoning": true,
+          "input": ["text", "image"],
+          "contextWindow": 128000,
+          "maxTokens": 32768
+        }
+      ]
+    }
+  }
+}
+```
+
+使用 models.json 静态模型时，provider 不会探测默认的 localhost；需要动态从 `/api/tags` 发现模型时，再使用上面的环境变量配置 endpoint。
 
 模型名称会显示为 `模型名 (Ollama native)`，provider id 是 `ollama-native`。普通文本、thinking、工具调用、图片输入和 Ollama 完成指标均通过原生协议处理。
 

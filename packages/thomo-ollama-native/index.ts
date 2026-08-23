@@ -1,4 +1,4 @@
-import { createAssistantMessageEventStream } from "@earendil-works/pi-ai";
+import { createAssistantMessageEventStream, type Api, type Context, type Model, type SimpleStreamOptions } from "@earendil-works/pi-ai";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import {
 	DEFAULT_OLLAMA_BASE_URL,
@@ -15,24 +15,32 @@ const PROVIDER_NAME = "Ollama (native /api/chat)";
 export default function ollamaNativeExtension(pi: ExtensionAPI): void {
 	if (process.env.THOMO_OLLAMA_NATIVE === "0") return;
 
-	const baseUrl = normalizeBaseUrl(process.env.THOMO_OLLAMA_BASE_URL ?? process.env.OLLAMA_HOST ?? DEFAULT_OLLAMA_BASE_URL);
+	const configuredEndpoint = process.env.THOMO_OLLAMA_BASE_URL ?? process.env.OLLAMA_HOST;
 	const modelNames = parseModelNames(
 		process.env.THOMO_OLLAMA_MODELS ?? process.env.THOMO_OLLAMA_MODEL ?? process.env.OLLAMA_MODELS,
 	);
+	const hasExplicitEndpoint = Boolean(configuredEndpoint?.trim());
+	const hasExplicitModels = modelNames.length > 0;
+	const baseUrl = normalizeBaseUrl(configuredEndpoint ?? DEFAULT_OLLAMA_BASE_URL);
 	let registered = false;
 
 	const register = () => {
 		if (registered) return;
-		pi.registerProvider(OLLAMA_PROVIDER_ID, {
+		const providerConfig = {
 			name: PROVIDER_NAME,
-			baseUrl,
-			api: "ollama-native",
+			api: "ollama-native" as const,
 			apiKey: "ollama",
-			models: modelNames.map(ollamaModelConfig),
-			refreshModels: async ({ signal }) => discoverOllamaModels(baseUrl, signal),
-			streamSimple: (model, context, options) =>
+			...(hasExplicitEndpoint || hasExplicitModels ? { baseUrl } : {}),
+			...(hasExplicitModels ? { models: modelNames.map(ollamaModelConfig) } : {}),
+			// Leave this callback absent when models.json is supplying a static
+			// provider. That keeps /model from probing the default localhost.
+			...(hasExplicitEndpoint || hasExplicitModels
+				? { refreshModels: async ({ signal }: { signal: AbortSignal }) => discoverOllamaModels(baseUrl, signal) }
+				: {}),
+			streamSimple: (model: Model<Api>, context: Context, options?: SimpleStreamOptions) =>
 				streamOllama(model, context, options, () => createAssistantMessageEventStream()),
-		});
+		};
+		pi.registerProvider(OLLAMA_PROVIDER_ID, providerConfig);
 		registered = true;
 	};
 
@@ -49,7 +57,10 @@ export default function ollamaNativeExtension(pi: ExtensionAPI): void {
 			}
 			if (action === "on") {
 				register();
-				ctx.ui.notify(`Ollama native provider enabled (${baseUrl})`, "info");
+				ctx.ui.notify(
+					`Ollama native provider enabled (${hasExplicitEndpoint ? baseUrl : "models.json or default localhost"})`,
+					"info",
+				);
 				return;
 			}
 			ctx.ui.notify(

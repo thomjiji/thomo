@@ -575,6 +575,52 @@ async function assertStandaloneOllamaNativeLoads(tempRoot) {
 	}
 }
 
+async function assertOllamaModelsJsonConfig(tempRoot) {
+	const agentDir = join(tempRoot, "agent-ollama-models-json");
+	const projectDir = join(tempRoot, "project-ollama-models-json");
+	const extensionDir = join(root, "packages", "thomo-ollama-native");
+	await mkdir(projectDir, { recursive: true });
+	const fixture = startOllamaFixtureServer();
+	await new Promise((resolvePromise, reject) => {
+		fixture.server.once("error", reject);
+		fixture.server.listen(0, "127.0.0.1", resolvePromise);
+	});
+	const address = fixture.server.address();
+	assert.equal(typeof address, "object");
+	try {
+		await mkdir(agentDir, { recursive: true });
+		await writeFile(join(agentDir, "models.json"), JSON.stringify({
+			providers: {
+				"ollama-native": {
+					baseUrl: `http://127.0.0.1:${address.port}`,
+					api: "ollama-native",
+					apiKey: "ollama",
+					models: [{
+						id: "qwen3:8b",
+						name: "qwen3:8b (Ollama native)",
+						reasoning: true,
+						input: ["text", "image"],
+						contextWindow: 128000,
+						maxTokens: 32768,
+					}],
+				},
+			},
+		}, null, 2));
+		const providerEnv = { ...piEnv, PI_CODING_AGENT_DIR: agentDir, PI_OFFLINE: "1", PI_AUTOTITLE: "0" };
+		providerEnv.THOMO_OLLAMA_BASE_URL = "";
+		providerEnv.THOMO_OLLAMA_MODELS = "";
+		providerEnv.OLLAMA_HOST = "";
+		await run(PI_BIN, ["install", extensionDir], { cwd: projectDir, env: providerEnv });
+		const rpc = await runRpcUntilAgentEnd(agentDir, projectDir, "ollama-native/qwen3:8b", "Say hello", [], providerEnv);
+		assert.ok(rpc.code === 0 || rpc.code === 143, `models.json provider failed: ${rpc.stderr}\\n${JSON.stringify(rpc.lines)}`);
+		assert.equal(rpc.lines.some((line) => line.type === "extension_error"), false, `models.json extension error: ${JSON.stringify(rpc.lines)}`);
+		assert.equal(fixture.requests.length, 1, `models.json should avoid catalog refresh: requests=${JSON.stringify(fixture.requests)} lines=${JSON.stringify(rpc.lines)}`);
+		assert.equal(fixture.requests[0].model, "qwen3:8b");
+	} finally {
+		await new Promise((resolvePromise) => fixture.server.close(resolvePromise));
+	}
+}
+
 async function assertLegacyCopiesAreRejected(tempRoot) {
 	const agentDir = join(tempRoot, "agent-legacy");
 	const projectDir = join(tempRoot, "project-legacy");
@@ -675,6 +721,7 @@ try {
 	await assertStandaloneExtensionLoads(tempRoot);
 	await assertStandaloneBlockStyleLoads(tempRoot);
 	await assertStandaloneOllamaNativeLoads(tempRoot);
+	await assertOllamaModelsJsonConfig(tempRoot);
 	await assertStandaloneDelegateIsDisabled(tempRoot);
 	await assertLegacyCopiesAreRejected(tempRoot);
 	await assertLegacyCleanupScript(tempRoot);
