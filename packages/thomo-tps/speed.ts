@@ -92,7 +92,7 @@ export function formatSpeedLabel(
 	}
 	const server = `${formatTokensPerSecond(serverTokensPerSecond)}t/s`;
 	const observed = speed?.tokensPerSecond === undefined ? "--" : `${formatTokensPerSecond(speed.tokensPerSecond)}t/s`;
-	return `srv ${server} ${observed}`;
+	return `srv ${server} obs ${observed}`;
 }
 
 export function estimateTokens(text: string): number {

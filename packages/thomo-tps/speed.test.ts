@@ -52,9 +52,9 @@ describe("thomo-tps speed calculation", () => {
 				{ tokensPerSecond: 40, outputTokens: 400, durationMs: 10_000, responseCount: 2, inProgress: false },
 				{ source: "ollama", outputTokens: 50, decodeDurationMs: 1_000 },
 			),
-			"srv 50.0t/s 40.0t/s",
+			"srv 50.0t/s obs 40.0t/s",
 		);
-		assert.equal(formatSpeedLabel(undefined, { source: "ollama", outputTokens: 50, decodeDurationMs: 1_000 }), "srv 50.0t/s --");
+		assert.equal(formatSpeedLabel(undefined, { source: "ollama", outputTokens: 50, decodeDurationMs: 1_000 }), "srv 50.0t/s obs --");
 		assert.equal(formatSpeedLabel({ tokensPerSecond: 40, outputTokens: 1, durationMs: 1, responseCount: 1, inProgress: false }, { source: "ollama", outputTokens: 1, decodeDurationMs: 0 }), "40.0t/s");
 	});
 });

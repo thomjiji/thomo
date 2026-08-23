@@ -71,7 +71,7 @@ pi
 
 ## 推理速度
 
-Ollama 最终响应中的 `eval_count` 和 `eval_duration` 会传给 thomo-tps。回复过程中显示 Pi 侧实时估算，例如 `8.7t/s`；回复结束后显示服务端和 Pi 侧速度，例如 `srv 52.4t/s 8.7t/s`。服务端速度只能在回复结束后计算。
+Ollama 最终响应中的 `eval_count` 和 `eval_duration` 会传给 thomo-tps。回复过程中显示 Pi 侧实时估算，例如 `8.7t/s`；回复结束后显示服务端和 Pi 侧速度，例如 `srv 52.4t/s obs 8.7t/s`。服务端速度只能在回复结束后计算。
 
 ## 移除
 
