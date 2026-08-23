@@ -2,7 +2,7 @@
   "name": "thomo-tps",
   "version": "0.1.0",
   "private": true,
-  "description": "Show average model output speed in Pi's right-aligned status bar",
+  "description": "Show average model output speed in Pi's status bar statistics",
   "type": "module",
   "main": "./index.ts",
   "files": [
