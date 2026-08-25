@@ -619,12 +619,13 @@ async function assertOllamaModelsJsonConfig(tempRoot) {
 	}
 }
 
-async function assertLegacyCopiesAreRejected(tempRoot) {
+async function assertLegacyCopiesAndPowerShellBash(tempRoot) {
 	const agentDir = join(tempRoot, "agent-legacy");
 	const projectDir = join(tempRoot, "project-legacy");
 	const legacyDir = join(agentDir, "extensions", "auto-title");
 	await mkdir(projectDir, { recursive: true });
 	await mkdir(legacyDir, { recursive: true });
+	await writeFile(join(agentDir, "settings.json"), JSON.stringify({ defaultTools: ["read", "powershell", "edit", "write"] }));
 	await cp(join(root, "packages", "thomo-auto-title", "index.ts"), join(legacyDir, "index.ts"));
 	await writeFile(join(legacyDir, "package.json"), JSON.stringify({ pi: { extensions: ["./index.ts"] } }));
 	await run(PI_BIN, ["install", root], { cwd: projectDir, env: { ...piEnv, PI_CODING_AGENT_DIR: agentDir, PI_OFFLINE: "1" } });
@@ -649,15 +650,27 @@ async function assertLegacyCopiesAreRejected(tempRoot) {
 
 	const bashAgentDir = join(tempRoot, "agent-legacy-bash");
 	const bashProjectDir = join(tempRoot, "project-legacy-bash");
-	await mkdir(join(bashAgentDir, "extensions", "bash-readable"), { recursive: true });
+	await mkdir(join(bashAgentDir, "extensions"), { recursive: true });
 	await mkdir(bashProjectDir, { recursive: true });
-	const legacyBash = await readFile(join(root, "packages", "thomo-bash-readable", "index.ts"), "utf8");
-	await writeFile(join(bashAgentDir, "extensions", "bash-readable.ts"), legacyBash.replace("./format.ts", "./bash-readable/format.ts"));
-	await cp(join(root, "packages", "thomo-bash-readable", "format.ts"), join(bashAgentDir, "extensions", "bash-readable", "format.ts"));
+	await writeFile(join(bashAgentDir, "settings.json"), JSON.stringify({ defaultTools: ["read", "powershell", "edit", "write"] }));
+	await writeFile(join(bashAgentDir, "extensions", "bash-readable.ts"), `import { createBashTool, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
+export default function (pi: ExtensionAPI) {
+  const bash = createBashTool(".");
+  pi.registerTool({
+    name: "bash",
+    label: "bash",
+    description: bash.description,
+    parameters: bash.parameters,
+    async execute(toolCallId, params, signal, onUpdate, ctx) {
+      return createBashTool(ctx.cwd).execute(toolCallId, params, signal, onUpdate, ctx);
+    }
+  });
+}
+`);
 	await run(PI_BIN, ["install", root], { cwd: bashProjectDir, env: { ...piEnv, PI_CODING_AGENT_DIR: bashAgentDir, PI_OFFLINE: "1" } });
 	const bashRpc = await runRpc(bashAgentDir, bashProjectDir, [{ id: "commands", type: "get_commands" }]);
-	assert.notEqual(bashRpc.code, 0);
-	assert.match(bashRpc.stderr, /Tool \"bash\" conflicts with/);
+	assert.equal(bashRpc.code, 0, `PowerShell-only startup should ignore the legacy bash-readable copy:\n${bashRpc.stderr}`);
+	assert.equal(bashRpc.lines.some((line) => line.type === "extension_error"), false, `Unexpected extension error:\n${bashRpc.stdout}`);
 }
 
 async function assertGitUpdates(tempRoot) {
@@ -721,7 +734,7 @@ try {
 	await assertStandaloneOllamaNativeLoads(tempRoot);
 	await assertOllamaModelsJsonConfig(tempRoot);
 	await assertStandaloneDelegateIsDisabled(tempRoot);
-	await assertLegacyCopiesAreRejected(tempRoot);
+	await assertLegacyCopiesAndPowerShellBash(tempRoot);
 	await assertLegacyCleanupScript(tempRoot);
 	await assertAutoTitleBehavior(tempRoot);
 	await assertGitUpdates(tempRoot);
