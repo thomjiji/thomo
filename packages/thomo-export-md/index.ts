@@ -142,6 +142,7 @@ const sanitizeFileName = (name: string): string =>
 	name
 		.replace(/[<>:"/\\|?*\u0000-\u001F]/g, "-")
 		.replace(/[. ]+$/, "")
+		.replace(/\s+/g, "_")
 		.trim();
 
 export function defaultName(sessionName?: string): string {
