@@ -135,7 +135,18 @@ export function parsePathArg(args: string): string | undefined {
 	return ws < 0 ? trimmed : trimmed.slice(0, ws);
 }
 
-function defaultName(): string {
+export const stripSessionTimestamp = (sessionName: string): string =>
+	sessionName.replace(/\s+\(\d{4}-\d{2}-\d{2} \d{2}:\d{2}\)$/, "").trim();
+
+const sanitizeFileName = (name: string): string =>
+	name
+		.replace(/[<>:"/\\|?*\u0000-\u001F]/g, "-")
+		.replace(/[. ]+$/, "")
+		.trim();
+
+export function defaultName(sessionName?: string): string {
+	const title = sessionName ? sanitizeFileName(stripSessionTimestamp(sessionName)) : "";
+	if (title) return `${title}.md`;
 	return `session-${new Date().toISOString().replace(/[:.]/g, "-")}.md`;
 }
 
@@ -143,7 +154,10 @@ export default function (pi: ExtensionAPI) {
 	pi.registerCommand("export-md", {
 		description: "Export session to filtered Markdown (prompts + replies only)",
 		handler: async (args: string, ctx: ExtensionCommandContext) => {
-			const outPath = resolve(ctx.cwd, parsePathArg(args) ?? defaultName());
+			const outPath = resolve(
+				ctx.cwd,
+				parsePathArg(args) ?? defaultName(ctx.sessionManager.getSessionName()),
+			);
 			const entries = ctx.sessionManager.getBranch() as unknown as SessionEntry[];
 			const md = renderMarkdown(entries, {
 				sessionName: ctx.sessionManager.getSessionName(),

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { extractText, parsePathArg, renderMarkdown } from "./index.ts";
+import { defaultName, extractText, parsePathArg, renderMarkdown, stripSessionTimestamp } from "./index.ts";
 
 test("extracts visible text from string and content blocks", () => {
 	assert.equal(extractText("plain text"), "plain text");
@@ -56,4 +56,11 @@ test("parses quoted, unquoted, and missing path arguments", () => {
 	assert.equal(parsePathArg("'single quoted.md'"), "single quoted.md");
 	assert.equal(parsePathArg("   "), undefined);
 	assert.equal(parsePathArg('"unterminated'), undefined);
+});
+
+test("uses the session title for the default filename", () => {
+	const sessionName = "Improve Markdown export (2026-01-01 12:34)";
+	assert.equal(stripSessionTimestamp(sessionName), "Improve Markdown export");
+	assert.equal(defaultName(sessionName), "Improve Markdown export.md");
+	assert.match(defaultName(), /^session-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z\.md$/);
 });
