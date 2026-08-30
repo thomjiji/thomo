@@ -6,9 +6,19 @@ const probeTheme = new Theme(
 	{ selectedBg: 0, userMessageBg: 22, toolPendingBg: 214 } as ConstructorParameters<typeof Theme>[1],
 	"256color",
 );
+
+const lightProbeTheme = new Theme(
+	{ text: "", thinkingXhigh: "" } as ConstructorParameters<typeof Theme>[0],
+	{ selectedBg: "#3e4450", toolSuccessBg: "#e8f0e8", toolErrorBg: "#f0e8e8" } as ConstructorParameters<typeof Theme>[1],
+	"truecolor",
+);
+
 const semanticBackgroundName = "userMessageBg";
 const userMessageBackground = (text: string): string => probeTheme.bg(semanticBackgroundName, text);
 const pendingToolBackground = (text: string): string => probeTheme.bg("toolPendingBg", text);
+
+const successfulToolBackground = (text: string): string => lightProbeTheme.bg("toolSuccessBg", text);
+const failedToolBackground = (text: string): string => lightProbeTheme.bg("toolErrorBg", text);
 
 type BlockStyle = "half" | "half-hatch" | "full" | "deep" | "outline" | "rail" | "spotlight" | "off";
 
@@ -61,6 +71,19 @@ function runBlockStyleProbe(): void {
 		}
 		if (!/\x1b\[49m {3}$/.test(fullLines[0] ?? "") || !fullLines.at(-1)?.startsWith("   ")) {
 			throw new Error("block-style full mode did not remove the top-right depth square");
+		}
+
+		const successfulToolBox = new Box(1, 1, (text) => successfulToolBackground(text));
+		successfulToolBox.addChild(new Text("success", 0, 0));
+		const successfulToolLines = successfulToolBox.render(40);
+		if (!successfulToolLines.some((line) => line.includes("\x1b[48;2;112;162;112m"))) {
+			throw new Error("block-style did not darken the success card color in HSL for its shadow");
+		}
+		const failedToolBox = new Box(1, 1, (text) => failedToolBackground(text));
+		failedToolBox.addChild(new Text("error", 0, 0));
+		const failedToolLines = failedToolBox.render(40);
+		if (!failedToolLines.some((line) => line.includes("\x1b[48;2;162;112;112m"))) {
+			throw new Error("block-style did not derive each shadow from its semantic card color");
 		}
 
 		patch.style = "outline";

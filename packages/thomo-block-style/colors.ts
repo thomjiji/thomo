@@ -67,13 +67,24 @@ export function parseBackgroundColor(ansi: string): RGB | undefined {
 	return BASIC_ANSI_COLORS[Number(basic[1] ?? basic[2]) + (basic[1] ? 8 : 0)];
 }
 
+/** Scale HSL lightness so shadows retain each semantic card's hue and saturation. */
 export function shade(color: RGB, factor: number): RGB {
-	const clamp = (value: number): number => Math.max(0, Math.min(255, Math.round(value)));
-	return {
-		r: clamp(color.r * factor),
-		g: clamp(color.g * factor),
-		b: clamp(color.b * factor),
-	};
+	const channels = [color.r, color.g, color.b].map((channel) => channel / 255);
+	const max = Math.max(...channels);
+	const min = Math.min(...channels);
+	const lightness = (max + min) / 2;
+	const nextLightness = Math.max(0, Math.min(1, lightness * factor));
+	if (max === min) {
+		const gray = Math.round(nextLightness * 255);
+		return { r: gray, g: gray, b: gray };
+	}
+
+	const saturation = (max - min) / (1 - Math.abs(2 * lightness - 1));
+	const chroma = (1 - Math.abs(2 * nextLightness - 1)) * saturation;
+	const floor = nextLightness - chroma / 2;
+	const convert = (channel: number): number =>
+		Math.round((floor + ((channel - min) / (max - min)) * chroma) * 255);
+	return { r: convert(channels[0]), g: convert(channels[1]), b: convert(channels[2]) };
 }
 
 export function background(text: string, color: RGB): string {
